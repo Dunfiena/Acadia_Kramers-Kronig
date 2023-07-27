@@ -9,3 +9,4 @@ for line in f:
     spectra.append(line[1])
 
 kk.fft.pure2kk(spectra, n=None, axis=-1)
+
