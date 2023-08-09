@@ -1,16 +1,16 @@
 import math
-import sys
 import os
-from PyQt5 import QtCore
+import sys
+
+import matplotlib.pyplot as plt
+import numpy as np
 from PyQt5.QtCore import Qt
 from PyQt5.QtGui import QIcon, QPixmap
-from PyQt5.QtWidgets import QApplication, QMainWindow, QPushButton, QLabel, QComboBox, QFileDialog, \
-    QSpinBox, QCheckBox, QGroupBox, QWidget, QTabWidget, QVBoxLayout, QGridLayout, QToolButton, QProgressBar, \
-    QPlainTextEdit, QDoubleSpinBox
-import matplotlib.pyplot as plt
-from matplotlib import image as mpimg
-import numpy as np
+from PyQt5.QtWidgets import QApplication, QMainWindow, QPushButton, QLabel, QFileDialog, \
+    QGroupBox, QWidget, QGridLayout
+
 import Kramers_Kronig_Calculation as kkc
+
 
 class MainWindow(QMainWindow):
     def set_filename(self, x):
@@ -63,12 +63,12 @@ class MainWindow(QMainWindow):
 
         logo_img = QLabel(self)
         self.logo_map = QPixmap('./Assets/logo.png')
-        self.logo_resize = self.logo_map.scaled(300, 150, Qt.KeepAspectRatio)
+        self.logo_resize = self.logo_map.scaled(450, 150, Qt.KeepAspectRatio)
         logo_img.setPixmap(self.logo_resize)
         logo_img.adjustSize()
 
         logo = QLabel('Kramers-Kronig Relation', self)
-        logo.setStyleSheet('color: white;font-size: 20pt;')
+        logo.setStyleSheet('color: white;font-size: 16pt;')
 
         self.graph1_Title = QLabel("Input data Graph")
         self.graph2_Title = QLabel("Output data Graph")
@@ -81,18 +81,16 @@ class MainWindow(QMainWindow):
         layout.addWidget(space, 0, 0, 0, 96)  # top
         layout.addWidget(right_top_group, 1, 20, 2, -1)
 
-        layout.addWidget(run, 1, 72, 2, 20)
-        layout.addWidget(bottom_text, 70, 70, 2, 20)
+        layout.addWidget(run, 3, 60, 2, 20)
+        layout.addWidget(bottom_text, 70, 80, 2, 20)
         layout.addWidget(file_sel, 1, 30, 2, 20)
-        layout.addWidget(search, 1, 45, 2, 20)
+        layout.addWidget(search, 1, 60, 2, 20)
         layout.addWidget(logo_img, 1, 0, 2, 20)
         layout.addWidget(logo, 2, 0, 2, 20)
-        layout.addWidget(self.graph1_Title, 6, 2, 2, 20)
-        layout.addWidget(self.graph2_Title, 6, 42, 2, 20)
-        layout.addWidget(self.firstGraph, 12, 2, 45, 45)
-        layout.addWidget(self.secondGraph, 12, 50, 45, 45)
-
-
+        layout.addWidget(self.graph1_Title, 6, 1, 2, 20)
+        layout.addWidget(self.graph2_Title, 6, 55, 2, 20)
+        layout.addWidget(self.firstGraph, 10, 0, 46, 46)
+        layout.addWidget(self.secondGraph, 10, 55, 46, 46)
 
         sub.setLayout(layout)
         self.show()
@@ -105,23 +103,32 @@ class MainWindow(QMainWindow):
         cshift = 1e-6
 
         f = open('{}'.format(window.get_filename()), 'r')
-        energy = []
+        x_axis = []
         spectra = []
+        x_tick = []
+        i = 0
         for line in f:
+            i = i + 1
             line = line.strip().split('\t')
-            energy.append((line[0]))
+            x_axis.append(line[0])
             spectra.append(line[1])
-
-        real = kkc.kkr((float(energy[1]) - float(energy[0])), window.get_filename(), cshift)
-
+            if i % 10 == 1:
+                x_tick.append((line[0]))
+        real = kkc.kkr((float(x_axis[1]) - float(x_axis[0])), window.get_filename(), cshift)
+        spectra = np.array(spectra, np.float32)
         real = np.array(real, dtype=np.float32)
-        real.tolist()
+        x = np.array(x_tick, np.complex_)
+        x_axis = np.array(x_axis, np.complex_)
 
-        plt.plot(real[:, 0, 0])
-        plt.margins(None, None, tight=True)
-        plt.savefig("./output.png")
+        font = {'size': 8}
+        plt.rc('font', **font)
+        plt.plot(x_axis, real[:, 0, 0])
+        plt.plot(x_axis, spectra)
+        plt.xticks(x, x_tick, size='small')
+
+        plt.savefig("./output.png", bbox_inches='tight', pad_inches=0.25)
         pixmap = QPixmap("./output.png")
-        pixmap_resized = pixmap.scaled(525, 525, QtCore.Qt.KeepAspectRatio)
+        pixmap_resized = pixmap.scaled(525, 400)
 
         self.secondGraph.setPixmap(pixmap_resized)
         self.secondGraph.adjustSize()
@@ -141,15 +148,25 @@ class MainWindow(QMainWindow):
             f = open('{}'.format(image_path), 'r')
             x_axis = []
             spectra = []
+            x_tick = []
+            i = 0
             for line in f:
+                i = i + 1
                 line = line.strip().split('\t')
-                x_axis.append((line[0]))
+                x_axis.append(line[0])
                 spectra.append(line[1])
-            spectra_plt = np.array(spectra, dtype=np.float32)
-            plt.plot(spectra_plt)
-            plt.savefig("./tmp.png")
+                if i % 10 == 1:
+                    x_tick.append((line[0]))
+            x = np.array(x_tick, np.complex_)
+            spectra = np.array(spectra, np.float32)
+            x_axis = np.array(x_axis, np.complex_)
+            font = {'size': 8}
+            plt.rc('font', **font)
+            plt.plot(x_axis, spectra)
+            plt.xticks(x, x_tick, size='small')
+            plt.savefig("./tmp.png", bbox_inches='tight', pad_inches=0.25)
             pixmap = QPixmap("./tmp.png")
-            pixmap_resized = pixmap.scaled(525, 525, QtCore.Qt.KeepAspectRatio)
+            pixmap_resized = pixmap.scaled(525, 400)
             self.firstGraph.setPixmap(pixmap_resized)
             self.firstGraph.adjustSize()
             window.set_filename(image_path)
