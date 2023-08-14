@@ -7,7 +7,7 @@ in pycharm or through the terminal
 
 This program calculates the real part of a dielectric function using a text file in the set up below: 
 
- (sample)
+ (sample)<br />
 6.00E+13	0.018270402<br />
 6.10E+13	0.019294582<br />
 6.20E+13	0.020398797
