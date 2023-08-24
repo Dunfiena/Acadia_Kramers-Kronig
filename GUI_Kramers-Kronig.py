@@ -1,14 +1,14 @@
-import math
 import os
 import sys
 import shutil
+from math import floor
 
 import matplotlib.pyplot as plt
 import numpy as np
 from PyQt5.QtCore import Qt
 from PyQt5.QtGui import QIcon, QPixmap
 from PyQt5.QtWidgets import QApplication, QMainWindow, QPushButton, QLabel, QFileDialog, \
-    QGroupBox, QWidget, QGridLayout, QLineEdit, QMessageBox
+    QGroupBox, QWidget, QGridLayout, QLineEdit, QMessageBox, QDoubleSpinBox
 
 import Kramers_Kronig_Calculation as kkc
 
@@ -20,7 +20,7 @@ class MainWindow(QMainWindow):
     def get_filename(self):
         return self._filename
 
-    def set_output_dir(self,x):
+    def set_output_dir(self, x):
         self._output_dir = x
 
     def get_output_dir(self):
@@ -31,7 +31,7 @@ class MainWindow(QMainWindow):
         super().__init__()
         self._output_dir = None
         self._filename = None
-        self.title = "Kramers-Konig Relation"
+        self.title = "Kramers-Kronig Relation"
         self.setWindowIcon(QIcon("Assets/project_icon_2.png"))
         self.left = 0
         self.top = 0
@@ -75,7 +75,7 @@ class MainWindow(QMainWindow):
         logo_img.adjustSize()
 
         logo = QLabel('Kramers-Kronig Relation', self)
-        logo.setStyleSheet('color: white;font-size: 16pt;')
+        logo.setStyleSheet('color: white;font-size: 15pt;')
 
         self.graph1_Title = QLabel("Input data Graph")
         self.graph2_Title = QLabel("Output data Graph")
@@ -92,6 +92,11 @@ class MainWindow(QMainWindow):
         save_button.setFixedSize(250, 50)
         save_button.clicked.connect(self.save_figure)
 
+        index_label = QLabel("n(0)", self)
+        self.index = QDoubleSpinBox()
+        self.index.setFixedSize(150, 50)
+        self.index.setValue(1.00)
+
         space = QLabel()
 
         layout.addWidget(space, 0, 0, 72, 0)  # left side
@@ -99,17 +104,19 @@ class MainWindow(QMainWindow):
         layout.addWidget(right_top_group, 1, 20, 2, -1)
 
         layout.addWidget(run, 1, 75, 2, 15)
-        layout.addWidget(self.output_button, 1, 55, 2, 15)
+        layout.addWidget(self.output_button, 1, 50, 2, 15)
         layout.addWidget(search, 1, 25, 2, 15)
 
         layout.addWidget(bottom_text, 70, 80, 2, 20)
         layout.addWidget(logo_img, 1, 0, 2, 20)
         layout.addWidget(logo, 2, 0, 2, 20)
+        layout.addWidget(index_label, 4, 35, 1, 5)
+        layout.addWidget(self.index, 4, 40)
 
-        layout.addWidget(self.graph1_Title, 6, 1, 2, 30)
-        layout.addWidget(self.graph2_Title, 6, 55, 2, 30)
-        layout.addWidget(self.firstGraph, 10, 0, 46, 46)
-        layout.addWidget(self.secondGraph, 10, 55, 46, 46)
+        layout.addWidget(self.graph1_Title, 8, 1, 2, 30)
+        layout.addWidget(self.graph2_Title, 8, 40, 2, 30)
+        layout.addWidget(self.firstGraph, 12, 0, 60, 55, Qt.AlignTop)
+        layout.addWidget(self.secondGraph, 12, 40, 60, 55, Qt.AlignTop)
 
         layout.addWidget(self.file_name, 67, 12, 4, 40)
         layout.addWidget(save_label, 68, 1, 2, 20)
@@ -126,32 +133,35 @@ class MainWindow(QMainWindow):
             if window.get_output_dir() is None:
                 window.set_output_dir(".")
 
-            h = 1.05457 * math.pow(10, -34)
-            de = (0.1 * math.pow(10, 13)) * h
             cshift = 1e-6
+            n = self.index.value()
 
             f = open('{}'.format(window.get_filename()), 'r')
-            x_axis = []
+            frequency = []
             spectra = []
             x_tick = []
             i = 0
             for line in f:
                 i = i + 1
                 line = line.strip().split('\t')
-                x_axis.append(line[0])
+                frequency.append(line[0])
                 spectra.append(line[1])
-                if i % 10 == 1:
-                    x_tick.append((line[0]))
-            real = kkc.kkr((float(x_axis[1]) - float(x_axis[0])), window.get_filename(), cshift)
+            step = len(frequency) / 10
+            step_adj = floor(step)
+            for i in range(floor(step)):
+                if step_adj <= len(frequency):
+                    x_tick.append(frequency[step_adj])
+                    step_adj = step_adj + floor(step)
+            real = kkc.kkr(n, window.get_filename(), cshift)
             spectra = np.array(spectra, np.float32)
             real = np.array(real, dtype=np.float32)
             x = np.array(x_tick, np.complex_)
-            x_axis = np.array(x_axis, np.complex_)
+            frequency = np.array(frequency, np.complex_)
             real = real[:, 0, 0]
             font = {'size': 8}
             plt.rc('font', **font)
-            plt.plot(x_axis, real)
-            plt.plot(x_axis, spectra)
+            plt.plot(frequency, real)
+            plt.plot(frequency, spectra)
             plt.xticks(x, x_tick, size='small')
 
             plt.savefig("tmp_files/tmp_output.png", bbox_inches='tight', pad_inches=0.25)
@@ -163,8 +173,8 @@ class MainWindow(QMainWindow):
 
             i = 0
             with open('tmp_files/tmp_txt.txt', 'w') as f:
-                for _ in x_axis:
-                    f.write('{}   {}   {}\n'.format(x_axis[i], spectra[i], real))
+                for _ in frequency:
+                    f.write('{}   {}   {}\n'.format(float(frequency[i]), spectra[i], real[i]))
                     i = i + 1
         else:
             print("No file selected")
@@ -183,23 +193,28 @@ class MainWindow(QMainWindow):
         res = os.path.isfile(image_path)
         if res:
             f = open('{}'.format(image_path), 'r')
-            x_axis = []
+            frequency = []
             spectra = []
             x_tick = []
             i = 0
             for line in f:
                 i = i + 1
                 line = line.strip().split('\t')
-                x_axis.append(line[0])
+                frequency.append(line[0])
                 spectra.append(line[1])
-                if i % 10 == 1:
-                    x_tick.append((line[0]))
+            step = len(frequency)/10
+            step_adj = floor(step)
+            for i in range(floor(step)):
+                if step_adj <= len(frequency):
+                    x_tick.append(frequency[step_adj])
+                    step_adj = step_adj + floor(step)
+
             x = np.array(x_tick, np.complex_)
-            spectra = np.array(spectra, np.float32)
-            x_axis = np.array(x_axis, np.complex_)
+            spectra = np.array(spectra, np.complex_)
+            frequency = np.array(frequency, np.complex_)
             font = {'size': 8}
             plt.rc('font', **font)
-            plt.plot(x_axis, spectra)
+            plt.plot(frequency, spectra)
             plt.xticks(x, x_tick, size='small')
             plt.savefig("tmp_files/tmp.png", bbox_inches='tight', pad_inches=0.25)
             pixmap = QPixmap("tmp_files/tmp.png")
@@ -225,6 +240,7 @@ class MainWindow(QMainWindow):
             msg.setText("Save Complete")
             msg.setWindowTitle("Save")
             msg.exec_()
+
 
 if __name__ == '__main__':
     app = QApplication(sys.argv)
